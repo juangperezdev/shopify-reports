@@ -14,17 +14,16 @@ load_dotenv()
 
 # Configuración de las tiendas basada en el .env
 SHOPS = [
-    # Comentadas temporalmente para pruebas iniciales
-    # {
-    #     "name": os.getenv("SHOP1_NAME"),
-    #     "url": os.getenv("SHOP1_URL"),
-    #     "token": os.getenv("SHOP1_TOKEN")
-    # },
-    # {
-    #     "name": os.getenv("SHOP2_NAME"),
-    #     "url": os.getenv("SHOP2_URL"),
-    #     "token": os.getenv("SHOP2_TOKEN")
-    # },
+    {
+        "name": os.getenv("SHOP1_NAME"),
+        "url": os.getenv("SHOP1_URL"),
+        "token": os.getenv("SHOP1_TOKEN")
+    },
+    {
+        "name": os.getenv("SHOP2_NAME"),
+        "url": os.getenv("SHOP2_URL"),
+        "token": os.getenv("SHOP2_TOKEN")
+    },
     {
         "name": os.getenv("SHOP3_NAME"),
         "url": os.getenv("SHOP3_URL"),
@@ -90,9 +89,18 @@ class ShopifyFetcher:
         # Asumimos que target_date ya es la fecha correcta, solo necesitamos asignarle la zona horaria
         # Pero target_date viene sin info de hora, así que construimos el rango del día
         
-        # Inicio y fin del día en hora local de la tienda
-        start_local = datetime.combine(target_date, datetime.min.time()).replace(tzinfo=tz)
-        end_local = datetime.combine(target_date, datetime.max.time()).replace(tzinfo=tz)
+        # Calcular fechas en la zona horaria de la tienda
+        naive_start = datetime.combine(target_date, datetime.min.time())
+        naive_end = datetime.combine(target_date, datetime.max.time())
+        
+        if hasattr(tz, 'localize'):
+            # pytz requires localize()
+            start_local = tz.localize(naive_start)
+            end_local = tz.localize(naive_end)
+        else:
+            # Standard datetime.timezone uses replace()
+            start_local = naive_start.replace(tzinfo=tz)
+            end_local = naive_end.replace(tzinfo=tz)
         
         # Convertir a UTC para la API
         start_utc = start_local.astimezone(timezone.utc)
@@ -264,10 +272,24 @@ def create_chart(data_points, store_name):
     return filename
 
 class PDFReport(FPDF):
+    def __init__(self, report_date=None):
+        super().__init__()
+        self.report_date = report_date
+        
     def header(self):
-        self.set_font('Arial', 'B', 14)
-        self.cell(0, 10, f"Reporte Diario de Ventas - {datetime.now().strftime('%Y-%m-%d')}", 0, 1, 'C')
-        self.ln(5)
+        if self.report_date:
+            # Título principal: Fecha del reporte
+            self.set_font('Arial', 'B', 16)
+            formatted_date = self.report_date.strftime('%B %d, %Y')
+            self.cell(0, 10, formatted_date, 0, 1, 'C')
+            
+            # Subtítulo: Fecha de generación
+            self.set_font('Arial', '', 9)
+            self.set_text_color(128, 128, 128)
+            gen_date = datetime.now().strftime('%B %d, %Y at %H:%M')
+            self.cell(0, 5, f'Generated on: {gen_date}', 0, 1, 'C')
+            self.set_text_color(0, 0, 0)
+            self.ln(5)
 
     def add_store_section(self, store_data):
         # Título Tienda
@@ -438,15 +460,19 @@ def generate_report_for_date(target_date_str):
 
     # 2. Generar PDF
     if collected_data:
-        pdf = PDFReport()
+        pdf = PDFReport(report_date=target_date)
         pdf.add_page()
         
-        # Título del reporte con la fecha seleccionada
-        pdf.set_font('Arial', 'B', 16)
-        pdf.cell(0, 10, f'Daily Sales Report - {target_date.strftime("%Y-%m-%d")}', 0, 1, 'C')
-        pdf.ln(10)
+        # Título eliminado a petición del usuario
+        # pdf.set_font('Arial', 'B', 16)
+        # pdf.cell(0, 10, f'Daily Sales Report - {target_date.strftime("%Y-%m-%d")}', 0, 1, 'C')
+        # pdf.ln(10)
         
-        for data in collected_data:
+        for idx, data in enumerate(collected_data):
+            # Nueva página para cada tienda (excepto la primera)
+            if idx > 0:
+                pdf.add_page()
+                
             pdf.add_store_section(data)
             
             if os.path.exists(data['chart_file']):
