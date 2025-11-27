@@ -502,69 +502,68 @@ class PDFReport(FPDF):
         
         self.ln(10)
         
-        # Sección de Carritos Abandonados - SOLO en modo día único
-        if 'abandoned_carts' in store_data and store_data['abandoned_carts'] is not None:
-            self.set_font('Arial', 'B', 10)
-            self.cell(0, 8, "Abandoned Carts", 0, 1)
-            self.ln(2)
-            
+        # Sección de Carritos Abandonados
+        self.set_font('Arial', 'B', 10)
+        self.cell(0, 8, "Abandoned Carts", 0, 1)
+        self.ln(2)
+        
+        if 'abandoned_carts' in store_data and store_data['abandoned_carts']:
             carts_data = store_data['abandoned_carts']
             total_carts = carts_data['count']
             total_value = carts_data['total_value']
             avg_value = carts_data['avg_value']
             
-            if total_carts > 0:
-                # Métricas de carritos abandonados
-                self.set_fill_color(250, 250, 250)
-                self.set_font('Arial', 'B', 9)
+            # Métricas de carritos abandonados
+            self.set_fill_color(250, 250, 250)
+            self.set_font('Arial', 'B', 9)
+            
+            col_w_carts = 63  # 3 columnas iguales
+            
+            self.cell(col_w_carts, 10, f"Total Carts: {total_carts}", 1, 0, 'L', 1)
+            self.cell(col_w_carts, 10, f"Total Value: ${total_value:.2f}", 1, 0, 'L', 1)
+            self.cell(col_w_carts, 10, f"Avg Value: ${avg_value:.2f}", 1, 1, 'L', 1)
+            
+            self.ln(5)
+            
+            # Lista de carritos en página separada
+            if 'list' in carts_data and carts_data['list']:
+                self.add_page()
                 
-                col_w_carts = 63  # 3 columnas iguales
-                
-                self.cell(col_w_carts, 10, f"Total Carts: {total_carts}", 1, 0, 'L', 1)
-                self.cell(col_w_carts, 10, f"Total Value: ${total_value:.2f}", 1, 0, 'L', 1)
-                self.cell(col_w_carts, 10, f"Avg Value: ${avg_value:.2f}", 1, 1, 'L', 1)
-                
+                # Título de la página de carritos
+                self.set_font('Arial', 'B', 14)
+                self.cell(0, 10, f"Abandoned Carts Detail - {store_data['name']}", 0, 1, 'C')
                 self.ln(5)
                 
-                # Lista de carritos en página separada
-                if 'list' in carts_data and carts_data['list']:
-                    self.add_page()
-                    
-                    # Título de la página de carritos
-                    self.set_font('Arial', 'B', 14)
-                    self.cell(0, 10, f"Abandoned Carts Detail - {store_data['name']}", 0, 1, 'C')
-                    self.ln(5)
-                    
-                    self.set_font('Arial', 'B', 8)
-                    self.set_fill_color(245, 245, 245)
-                    
-                    # Headers
-                    self.cell(110, 6, "Customer Email", 1, 0, 'L', 1)
-                    self.cell(40, 6, "Value", 1, 0, 'R', 1)
-                    self.cell(40, 6, "Time", 1, 1, 'C', 1)
-                    
-                    # Filas
-                    self.set_font('Arial', '', 8)
-                    self.set_fill_color(255, 255, 255)
-                    
-                    # Mostrar TODOS los carritos (sin límite)
-                    for cart in carts_data['list']:
-                        email = cart['email']
-                        val = cart['value']
-                        # Extraer hora de la fecha ISO
-                        try:
-                            time_str = cart['date'].split('T')[1][:5]
-                        except:
-                            time_str = "--:--"
-                            
-                        self.cell(110, 6, email, 1, 0, 'L', 1)
-                        self.cell(40, 6, f"${val:.2f}", 1, 0, 'R', 1)
-                        self.cell(40,6, time_str, 1, 1, 'C', 1)
-            else:
-                # Si no hay carritos, mostrar mensaje simple
-                self.set_font('Arial', '', 9)
-                self.cell(0, 10, "No abandoned carts found for this date.", 0, 1, 'L')
+                self.set_font('Arial', 'B', 8)
+                self.set_fill_color(245, 245, 245)
+                
+                # Headers
+                self.cell(110, 6, "Customer Email", 1, 0, 'L', 1)
+                self.cell(40, 6, "Value", 1, 0, 'R', 1)
+                self.cell(40, 6, "Time", 1, 1, 'C', 1)
+                
+                # Filas
+                self.set_font('Arial', '', 8)
+                self.set_fill_color(255, 255, 255)
+                
+                # Mostrar TODOS los carritos (sin límite)
+                for cart in carts_data['list']:
+                    email = cart['email']
+                    val = cart['value']
+                    # Extraer hora de la fecha ISO
+                    try:
+                        time_str = cart['date'].split('T')[1][:5]
+                    except:
+                        time_str = "--:--"
+                        
+                    self.cell(110, 6, email, 1, 0, 'L', 1)
+                    self.cell(40, 6, f"${val:.2f}", 1, 0, 'R', 1)
+                    self.cell(40, 6, time_str, 1, 1, 'C', 1)
             
+            self.ln(5)
+        else:
+            self.set_font('Arial', '', 9)
+            self.cell(0, 10, "No abandoned carts found for this date.", 0, 1, 'L')
             self.ln(5)
 
 # --- EJECUCIÓN PRINCIPAL ---
@@ -764,6 +763,139 @@ def _generate_range_report(start_date, end_date):
         print(f"\n✅ Reporte de rango generado: {filename}")
         return filename
     return None
+
+if __name__ == "__main__":
+    # Por defecto genera el reporte de ayer
+    yesterday = datetime.now() - timedelta(days=1)
+    generate_report_for_date(yesterday.strftime('%Y-%m-%d'))
+    """Genera el reporte para una fecha o rango específico (YYYY-MM-DD)"""
+    try:
+        target_date = datetime.strptime(target_date_str, '%Y-%m-%d').date()
+        end_date = None
+        
+        if end_date_str:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            print(f"\nIniciando generación de reporte para rango: {target_date} - {end_date}...")
+            report_title_date = f"{target_date.strftime('%b %d')} - {end_date.strftime('%b %d, %Y')}"
+            filename_date = f"{target_date.strftime('%Y-%m-%d')}_to_{end_date.strftime('%Y-%m-%d')}"
+        else:
+            print(f"\nIniciando generación de reporte para {target_date}...")
+            report_title_date = target_date
+            filename_date = target_date.strftime('%Y-%m-%d')
+
+        collected_data = []
+        
+        # 1. Obtener datos de cada tienda
+        for shop_conf in SHOPS:
+            if not shop_conf["token"]: continue 
+            
+            print(f"Procesando {shop_conf['name']}...")
+            fetcher = ShopifyFetcher(shop_conf)
+            
+            # Obtener órdenes de DOS períodos (fecha seleccionada y día anterior)
+            current_orders = fetcher.get_orders_for_date(target_date, end_date)
+            
+            # Calcular período anterior equivalente
+            previous_orders = fetcher.get_previous_period_orders(target_date, end_date)
+            
+            # Procesar estadísticas de órdenes
+            current_stats = fetcher.process_daily_stats(current_orders, is_range=(end_date is not None), start_date=target_date, end_date=end_date)
+            previous_stats = fetcher.process_daily_stats(previous_orders, is_range=(end_date is not None), start_date=target_date if not end_date else (target_date - timedelta(days=(end_date - target_date).days + 1)), end_date=target_date - timedelta(days=1) if not end_date else target_date - timedelta(days=1))
+            
+            # Obtener Analytics (sesiones, conversión)
+            # ... (código existente de analytics) ...
+            
+            # Obtener carritos abandonados - SOLO para días únicos, NO para rangos
+            abandoned_checkouts = None
+            abandoned_carts_data = None
+            
+            if not end_date:
+                # Solo procesar carritos abandonados si es un día único
+                abandoned_checkouts = fetcher.get_abandoned_checkouts(target_date) 
+            
+            
+            if abandoned_checkouts:
+                total_value = sum(float(c.get('total_price', 0)) for c in abandoned_checkouts)
+                avg_value = total_value / len(abandoned_checkouts) if abandoned_checkouts else 0
+                
+                # Preparar lista de detalles
+                carts_list = []
+                for cart in abandoned_checkouts:
+                    carts_list.append({
+                        'email': cart.get('email', 'No email'),
+                        'value': float(cart.get('total_price', 0)),
+                        'date': cart.get('created_at', '')
+                    })
+                
+                abandoned_carts_data = {
+                    'count': len(abandoned_checkouts),
+                    'total_value': total_value,
+                    'avg_value': avg_value,
+                    'list': carts_list  # Lista detallada
+                }
+            
+            # Comparar períodos
+            comparison = fetcher.compare_periods(current_stats, previous_stats)
+            
+            # Generar gráfico de órdenes (por hora o por día)
+            chart_data = current_stats.get('daily_orders') if end_date else current_stats.get('hourly_orders')
+            chart_path = create_chart(chart_data, shop_conf['name'], is_range=(end_date is not None), start_date=target_date, end_date=end_date)
+            
+            # Generar leyenda narrativa estilo Shopify
+            sales_val = current_stats['summary']['Ventas']
+            orders_count = current_stats['summary']['Ordenes']
+            
+            sales_change = comparison['sales_change']
+            orders_change = comparison['orders_change']
+            
+            sales_trend = "an increase" if sales_change >= 0 else "a decrease"
+            orders_trend = "showing" if orders_change >= 0 else "with"
+            
+            narrative = (
+                f"{shop_conf['name']} store generated total sales of {sales_val}, "
+                f"{sales_trend} of {abs(sales_change):.0f}% compared to the previous day. "
+                f"The store fulfilled {orders_count} orders, {orders_trend} "
+                f"{'+' if orders_change >= 0 else ''}{orders_change:.0f}% change in order volume."
+            )
+            
+            collected_data.append({
+                "name": shop_conf['name'],
+                "stats": current_stats,
+                "comparison": comparison,
+                "chart_file": chart_path,
+                "narrative": narrative,
+                "analytics": {'sessions': 0, 'conversion_rate': 0},  # Placeholder
+                "abandoned_carts": abandoned_carts_data
+            })
+
+        # 2. Generar PDF
+        if collected_data:
+            pdf = PDFReport(report_date=report_title_date)
+            pdf.add_page()
+            
+            for idx, data in enumerate(collected_data):
+                # Nueva página para cada tienda (excepto la primera)
+                if idx > 0:
+                    pdf.add_page()
+                    
+                pdf.add_store_section(data)
+                
+                if os.path.exists(data['chart_file']):
+                    os.remove(data['chart_file'])
+                
+            filename = f"Reporte_Ventas_{filename_date}.pdf"
+            pdf.output(filename)
+            print(f"\n¡Éxito! Reporte generado: {filename}")
+            return filename
+            
+    except ValueError as e:
+        print(f"Error de formato de fecha: {e}")
+        return None
+    except Exception as e:
+        print(f"Error inesperado: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 if __name__ == "__main__":
     # Por defecto genera el reporte de ayer

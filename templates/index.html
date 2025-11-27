@@ -42,8 +42,27 @@
 
             <form action="/generate" method="POST" id="reportForm">
                 <div class="form-group">
-                    <label for="date">Select date</label>
+                    <label>Report Type</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="report_type" value="single" checked onchange="toggleDateInputs()">
+                            Single Date
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="report_type" value="range" onchange="toggleDateInputs()">
+                            Date Range
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="date" id="start_date_label">Select Date</label>
                     <input type="date" id="date" name="date" required class="date-input">
+                </div>
+
+                <div class="form-group" id="end_date_group" style="display: none;">
+                    <label for="end_date">End Date</label>
+                    <input type="date" id="end_date" name="end_date" class="date-input">
                 </div>
 
                 <button type="submit" class="btn-primary" id="generateBtn">
@@ -57,9 +76,38 @@
     <script>
         // Set default date to yesterday
         const dateInput = document.getElementById('date');
+        const endDateInput = document.getElementById('end_date');
+
+        // Set default to yesterday for start date
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         dateInput.valueAsDate = yesterday;
+
+        // Clear end_date by default (since we start in Single Date mode)
+        endDateInput.value = '';
+
+        function toggleDateInputs() {
+            const reportType = document.querySelector('input[name="report_type"]:checked').value;
+            const endDateGroup = document.getElementById('end_date_group');
+            const startDateLabel = document.getElementById('start_date_label');
+            const endDateInput = document.getElementById('end_date');
+
+            if (reportType === 'range') {
+                endDateGroup.style.display = 'block';
+                startDateLabel.textContent = 'Start Date';
+                endDateInput.required = true;
+                // Restore yesterday as default for end date
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                endDateInput.valueAsDate = yesterday;
+            } else {
+                endDateGroup.style.display = 'none';
+                startDateLabel.textContent = 'Select Date';
+                endDateInput.required = false;
+                // Clear the end date value so it doesn't get submitted
+                endDateInput.value = '';
+            }
+        }
 
         // Loading state
         const form = document.getElementById('reportForm');
