@@ -277,6 +277,11 @@ class PDFReport(FPDF):
         self.report_date = report_date
         
     def header(self):
+        # Logo (si existe)
+        logo_path = 'static/logo.jpg'
+        if os.path.exists(logo_path):
+            self.image(logo_path, x=10, y=8, w=30)  # Logo en la esquina superior izquierda
+        
         if self.report_date:
             # Título principal: Fecha del reporte
             self.set_font('Arial', 'B', 16)
@@ -289,7 +294,7 @@ class PDFReport(FPDF):
             gen_date = datetime.now().strftime('%B %d, %Y at %H:%M')
             self.cell(0, 5, f'Generated on: {gen_date}', 0, 1, 'C')
             self.set_text_color(0, 0, 0)
-            self.ln(5)
+            self.ln(18)  # Más espacio para evitar que el título de la tienda pise el logo
 
     def add_store_section(self, store_data):
         # Título Tienda
@@ -338,10 +343,12 @@ class PDFReport(FPDF):
         else:
             self.cell(col_w, 10, "", 1, 1)
         
-        # Ticket Promedio
+        # Ticket Promedio (texto en primera columna, valor en rojo en segunda)
         self.set_fill_color(250, 250, 250)
-        self.cell(col_w, 10, f"Avg Ticket: {metrics['Ticket Prom']}", 1, 0, 'L', 1)
-        self.cell(col_w, 10, "", 1, 1)
+        self.cell(col_w, 10, "Avg Ticket:", 1, 0, 'L', 1)  # Etiqueta
+        self.set_text_color(255, 0, 0)  # Rojo
+        self.cell(col_w, 10, f"{metrics['Ticket Prom']}", 1, 1, 'L', 1)  # Valor en rojo
+        self.set_text_color(0, 0, 0)  # Volver a negro
         
         self.ln(5)
 
@@ -355,17 +362,17 @@ class PDFReport(FPDF):
         self.cell(0, 8, "Attribution - Marketing Channels", 0, 1)
         self.ln(2)
         
-        # Header Tabla (estilo Shopify con Sessions)
+        # Header Tabla (simplificada)
         self.set_fill_color(245, 245, 245)
-        self.set_font('Arial', 'B', 8)
-        col_w = [40, 22, 22, 22, 25, 22]  # Channel, Type, Sessions, Orders, Sales, Conv%
-        headers = ["Channel", "Type", "Sessions", "Orders", "Sales", "Conv."]
+        self.set_font('Arial', 'B', 9)
+        col_w = [80, 40, 50]  # Channel, Orders, Sales
+        headers = ["Channel", "Orders", "Sales"]
         for i, h in enumerate(headers):
             self.cell(col_w[i], 7, h, 1, 0, 'C', 1)
         self.ln()
 
         # Filas Tabla
-        self.set_font('Arial', '', 8)
+        self.set_font('Arial', '', 9)
         self.set_fill_color(255, 255, 255)
         attribution_data = store_data['stats']['attribution']
         
@@ -376,21 +383,15 @@ class PDFReport(FPDF):
             sorted_channels = sorted(attribution_data.items(), key=lambda x: x[1]['sales'], reverse=True)
             
             for channel_name, data in sorted_channels:
-                channel_type = data.get('type', 'unknown')
-                sessions = data.get('sessions', 0)
                 orders = data.get('orders', data.get('count', 0))
                 sales = data.get('sales', 0.0)
-                conv_rate = data.get('conversion_rate', 0.0)
                 
                 # Alternar color de fondo
                 self.set_fill_color(250, 250, 250)
                 
-                self.cell(col_w[0], 7, str(channel_name)[:18], 1, 0, 'L', 1)
-                self.cell(col_w[1], 7, channel_type[:10], 1, 0, 'C', 1)
-                self.cell(col_w[2], 7, str(sessions), 1, 0, 'C', 1)
-                self.cell(col_w[3], 7, str(orders), 1, 0, 'C', 1)
-                self.cell(col_w[4], 7, f"${sales:.2f}", 1, 0, 'R', 1)
-                self.cell(col_w[5], 7, f"{conv_rate:.1f}%", 1, 1, 'C', 1)
+                self.cell(col_w[0], 7, str(channel_name)[:35], 1, 0, 'L', 1)
+                self.cell(col_w[1], 7, str(orders), 1, 0, 'C', 1)
+                self.cell(col_w[2], 7, f"${sales:.2f}", 1, 1, 'R', 1)
         
         self.ln(10)
 
