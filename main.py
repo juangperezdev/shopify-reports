@@ -260,9 +260,9 @@ def create_chart(data_points, store_name):
     plt.figure(figsize=(10, 3))
     hours = range(len(data_points))
     plt.bar(hours, data_points, color='#008060', alpha=0.7) # Bar chart es mejor para conteos discretos bajos
-    plt.title(f"Órdenes por Hora (Ayer) - {store_name}", fontsize=10)
-    plt.xlabel("Hora del día")
-    plt.ylabel("Cant. Órdenes")
+    plt.title(f"Orders by Hour (Yesterday) - {store_name}", fontsize=10)
+    plt.xlabel("Hour of day")
+    plt.ylabel("Order Count")
     plt.grid(True, axis='y', linestyle='--', alpha=0.3)
     plt.xticks(hours[::2]) # Mostrar cada 2 horas
     
@@ -370,7 +370,7 @@ class PDFReport(FPDF):
         attribution_data = store_data['stats']['attribution']
         
         if not attribution_data:
-            self.cell(sum(col_w), 7, "Sin datos de órdenes", 1, 1, 'C')
+            self.cell(sum(col_w), 7, "No order data", 1, 1, 'C')
         else:
             # Ordenar por ventas (mayor a menor)
             sorted_channels = sorted(attribution_data.items(), key=lambda x: x[1]['sales'], reverse=True)
