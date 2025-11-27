@@ -15,7 +15,7 @@ def generate():
     target_date = request.form.get('date')
     
     if not target_date:
-        flash('Por favor selecciona una fecha', 'error')
+        flash('Please select a date', 'error')
         return redirect(url_for('index'))
     
     try:
@@ -28,11 +28,11 @@ def generate():
         if filename and os.path.exists(filename):
             return send_file(filename, as_attachment=True)
         else:
-            flash('No se pudo generar el reporte. Verifica que haya datos para esa fecha.', 'error')
+            flash('Could not generate the report. Please verify there is data for that date.', 'error')
             return redirect(url_for('index'))
             
     except ValueError:
-        flash('Formato de fecha inválido', 'error')
+        flash('Invalid date format', 'error')
         return redirect(url_for('index'))
     except Exception as e:
         flash(f'Error inesperado: {str(e)}', 'error')

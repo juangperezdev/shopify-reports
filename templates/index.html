@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,37 +8,46 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
     <div class="container">
         <div class="card">
             <div class="header">
                 <div class="icon-bg">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="icon">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
                 </div>
                 <h1>Shopify Reports</h1>
-                <p>Genera reportes diarios de ventas en PDF</p>
+                <p>Generate daily sales reports in PDF</p>
             </div>
 
             {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    <div class="messages">
-                        {% for category, message in messages %}
-                            <div class="alert alert-{{ category }}">
-                                {{ message }}
-                            </div>
-                        {% endfor %}
-                    </div>
-                {% endif %}
+            {% if messages %}
+            <div class="messages">
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
             {% endwith %}
 
             <form action="/generate" method="POST" id="reportForm">
                 <div class="form-group">
-                    <label for="date">Selecciona la fecha</label>
+                    <label for="date">Select date</label>
                     <input type="date" id="date" name="date" required class="date-input">
                 </div>
 
                 <button type="submit" class="btn-primary" id="generateBtn">
-                    <span class="btn-text">Generar Reporte</span>
+                    <span class="btn-text">Generate Report</span>
                     <span class="loader"></span>
                 </button>
             </form>
@@ -54,11 +64,11 @@
         // Loading state
         const form = document.getElementById('reportForm');
         const btn = document.getElementById('generateBtn');
-        
-        form.addEventListener('submit', function() {
+
+        form.addEventListener('submit', function () {
             btn.classList.add('loading');
             btn.disabled = true;
-            
+
             // Re-enable after 3 seconds (simulated download start)
             setTimeout(() => {
                 btn.classList.remove('loading');
@@ -67,4 +77,5 @@
         });
     </script>
 </body>
+
 </html>
