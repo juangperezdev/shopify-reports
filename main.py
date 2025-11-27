@@ -134,6 +134,48 @@ class ShopifyFetcher:
         previous_day = date_obj - timedelta(days=1)
         return self.get_orders_for_period(target_date=previous_day)
     
+    def get_abandoned_checkouts(self, target_date):
+        """Obtiene carritos abandonados de una fecha específica"""
+        try:
+            import pytz
+        except ImportError:
+            timezone_str = 'UTC'
+            tz = timezone.utc
+        else:
+            timezone_str = self.get_shop_timezone()
+            try:
+                tz = pytz.timezone(timezone_str)
+            except:
+                tz = timezone.utc
+        
+        # Calcular rango del día
+        naive_start = datetime.combine(target_date, datetime.min.time())
+        naive_end = datetime.combine(target_date, datetime.max.time())
+        
+        if hasattr(tz, 'localize'):
+            start_local = tz.localize(naive_start)
+            end_local = tz.localize(naive_end)
+        else:
+            start_local = naive_start.replace(tzinfo=tz)
+            end_local = naive_end.replace(tzinfo=tz)
+        
+        start_utc = start_local.astimezone(timezone.utc)
+        end_utc = end_local.astimezone(timezone.utc)
+        
+        params = {
+            "created_at_min": start_utc.isoformat(),
+            "created_at_max": end_utc.isoformat(),
+            "status": "open",  # Solo carritos abandonados
+            "limit": 250
+        }
+        
+        data = self._get_rest_data("checkouts.json", params)
+        if data and 'checkouts' in data:
+            checkouts = data['checkouts']
+            print(f"  🛒 Encontrados {len(checkouts)} carritos abandonados")
+            return checkouts
+        return []
+    
     def get_analytics_by_channel(self, days_ago=1):
         """Obtiene sesiones y conversión por canal usando ShopifyQL"""
         # TEMPORALMENTE DESHABILITADO - ShopifyQL no está disponible en plan básico
@@ -343,12 +385,12 @@ class PDFReport(FPDF):
         else:
             self.cell(col_w, 10, "", 1, 1)
         
-        # Ticket Promedio (texto en primera columna, valor en rojo en segunda)
+        # Ticket Promedio (todo en primera columna, en rojo)
         self.set_fill_color(250, 250, 250)
-        self.cell(col_w, 10, "Avg Ticket:", 1, 0, 'L', 1)  # Etiqueta
         self.set_text_color(255, 0, 0)  # Rojo
-        self.cell(col_w, 10, f"{metrics['Ticket Prom']}", 1, 1, 'L', 1)  # Valor en rojo
+        self.cell(col_w, 10, f"Avg Ticket: {metrics['Ticket Prom']}", 1, 0, 'L', 1)
         self.set_text_color(0, 0, 0)  # Volver a negro
+        self.cell(col_w, 10, "", 1, 1)  # Segunda columna vacía
         
         self.ln(5)
 
@@ -394,6 +436,70 @@ class PDFReport(FPDF):
                 self.cell(col_w[2], 7, f"${sales:.2f}", 1, 1, 'R', 1)
         
         self.ln(10)
+        
+        # Sección de Carritos Abandonados
+        self.set_font('Arial', 'B', 10)
+        self.cell(0, 8, "Abandoned Carts", 0, 1)
+        self.ln(2)
+        
+        if 'abandoned_carts' in store_data and store_data['abandoned_carts']:
+            carts_data = store_data['abandoned_carts']
+            total_carts = carts_data['count']
+            total_value = carts_data['total_value']
+            avg_value = carts_data['avg_value']
+            
+            # Métricas de carritos abandonados
+            self.set_fill_color(250, 250, 250)
+            self.set_font('Arial', 'B', 9)
+            
+            col_w_carts = 63  # 3 columnas iguales
+            
+            self.cell(col_w_carts, 10, f"Total Carts: {total_carts}", 1, 0, 'L', 1)
+            self.cell(col_w_carts, 10, f"Total Value: ${total_value:.2f}", 1, 0, 'L', 1)
+            self.cell(col_w_carts, 10, f"Avg Value: ${avg_value:.2f}", 1, 1, 'L', 1)
+            
+            self.ln(5)
+            
+            # Lista de carritos en página separada
+            if 'list' in carts_data and carts_data['list']:
+                self.add_page()
+                
+                # Título de la página de carritos
+                self.set_font('Arial', 'B', 14)
+                self.cell(0, 10, f"Abandoned Carts Detail - {store_data['name']}", 0, 1, 'C')
+                self.ln(5)
+                
+                self.set_font('Arial', 'B', 8)
+                self.set_fill_color(245, 245, 245)
+                
+                # Headers
+                self.cell(110, 6, "Customer Email", 1, 0, 'L', 1)
+                self.cell(40, 6, "Value", 1, 0, 'R', 1)
+                self.cell(40, 6, "Time", 1, 1, 'C', 1)
+                
+                # Filas
+                self.set_font('Arial', '', 8)
+                self.set_fill_color(255, 255, 255)
+                
+                # Mostrar TODOS los carritos (sin límite)
+                for cart in carts_data['list']:
+                    email = cart['email']
+                    val = cart['value']
+                    # Extraer hora de la fecha ISO
+                    try:
+                        time_str = cart['date'].split('T')[1][:5]
+                    except:
+                        time_str = "--:--"
+                        
+                    self.cell(110, 6, email, 1, 0, 'L', 1)
+                    self.cell(40, 6, f"${val:.2f}", 1, 0, 'R', 1)
+                    self.cell(40, 6, time_str, 1, 1, 'C', 1)
+            
+            self.ln(5)
+        else:
+            self.set_font('Arial', '', 9)
+            self.cell(0, 10, "No abandoned carts found for this date.", 0, 1, 'L')
+            self.ln(5)
 
 # --- EJECUCIÓN PRINCIPAL ---
 
@@ -427,6 +533,30 @@ def generate_report_for_date(target_date_str):
         # Obtener Analytics (sesiones, conversión)
         # ... (código existente de analytics) ...
         
+        # Obtener carritos abandonados
+        abandoned_checkouts = fetcher.get_abandoned_checkouts(target_date)
+        abandoned_carts_data = None
+        
+        if abandoned_checkouts:
+            total_value = sum(float(c.get('total_price', 0)) for c in abandoned_checkouts)
+            avg_value = total_value / len(abandoned_checkouts) if abandoned_checkouts else 0
+            
+            # Preparar lista de detalles
+            carts_list = []
+            for cart in abandoned_checkouts:
+                carts_list.append({
+                    'email': cart.get('email', 'No email'),
+                    'value': float(cart.get('total_price', 0)),
+                    'date': cart.get('created_at', '')
+                })
+            
+            abandoned_carts_data = {
+                'count': len(abandoned_checkouts),
+                'total_value': total_value,
+                'avg_value': avg_value,
+                'list': carts_list  # Lista detallada
+            }
+        
         # Comparar períodos
         comparison = fetcher.compare_periods(current_stats, previous_stats)
         
@@ -456,7 +586,8 @@ def generate_report_for_date(target_date_str):
             "comparison": comparison,
             "chart_file": chart_path,
             "narrative": narrative,
-            "analytics": {'sessions': 0, 'conversion_rate': 0} # Placeholder
+            "analytics": {'sessions': 0, 'conversion_rate': 0},  # Placeholder
+            "abandoned_carts": abandoned_carts_data
         })
 
     # 2. Generar PDF
